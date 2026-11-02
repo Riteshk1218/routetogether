@@ -9,7 +9,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 
-app.use(express.static(path.join(__dirname, "public")));
+ app.use(express.static(__dirname));
 app.get("/health", (_req, res) => res.send("ok"));
 
 /** trips: code -> { members: Map<id, member>, dest: {lat,lng,name}|null, touched } */
