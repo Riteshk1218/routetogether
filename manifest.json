@@ -1,0 +1,10 @@
+{
+  "name": "RouteTogether",
+  "short_name": "RouteTogether",
+  "description": "Share live locations with your trip group on one map",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#e9f3fa",
+  "theme_color": "#1677e5",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

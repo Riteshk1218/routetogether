@@ -1,0 +1,16 @@
+{
+  "name": "routetogether",
+  "version": "1.0.0",
+  "description": "Share live locations with your trip group on one map",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "socket.io": "^4.8.1"
+  }
+}

@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1677e5">
+<title>RouteTogether</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --bg:#e9f3fa; --surface:#fff; --card:#fff; --fg:#0f2a3d; --muted:#5d7486; --line:#d6e4ee;
+  --accent:#1677e5; --accent-soft:#dcebfc; --ok:#159a5b; --warn:#c77700;
+  --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --body:"Figtree","Segoe UI",system-ui,sans-serif;
+  --shadow:0 6px 20px rgba(15,42,61,.14);
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0b1620; --surface:#122230; --card:#182c3d; --fg:#e6f0f7; --muted:#8fa6b8; --line:#22394b;
+  --accent:#4b9cf5; --accent-soft:#16324d; --ok:#3cc985; --warn:#f0a63a; --shadow:0 6px 20px rgba(0,0,0,.45); color-scheme:dark}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:15px/1.4 var(--body)}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+[hidden]{display:none!important}
+
+/* Join screen */
+.join{min-height:100%;display:grid;place-items:center;padding:24px max(16px,env(safe-area-inset-right)) 24px max(16px,env(safe-area-inset-left))}
+.card{width:100%;max-width:400px;background:var(--surface);border-radius:22px;padding:28px 22px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:14px}
+.brand{font-family:var(--display);font-weight:800;font-size:30px;margin:0;letter-spacing:-.02em}
+.brand span{color:var(--accent)}
+.lead{margin:0;color:var(--muted)}
+label{font-size:13px;font-weight:600;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+input{border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:12px 14px;font-size:16px}
+#code{text-transform:uppercase;letter-spacing:.12em;font-weight:700}
+.coderow{display:flex;gap:8px}.coderow input{flex:1;min-width:0}
+.primary{background:var(--accent);color:#fff;border:none;border-radius:12px;padding:14px;font-weight:700;font-size:16px}
+.ghost{background:var(--accent-soft);color:var(--accent);border:none;border-radius:12px;padding:0 14px;font-weight:700;white-space:nowrap}
+.err{color:#d23b32;font-size:13.5px;margin:0}
+.fine{font-size:12.5px;color:var(--muted);margin:0}
+
+/* App screen */
+.app{height:100%;display:flex;flex-direction:column}
+header{display:flex;align-items:center;gap:10px;padding:calc(10px + env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) 10px max(14px,env(safe-area-inset-left));background:var(--surface);border-bottom:1px solid var(--line);z-index:500}
+header h1{font-family:var(--display);font-size:19px;margin:0;font-weight:800}
+.chip{display:flex;align-items:center;gap:6px;background:var(--accent-soft);color:var(--accent);font-weight:700;font-size:13px;border:none;border-radius:999px;padding:7px 11px;letter-spacing:.06em}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.dot.off{background:var(--muted)}
+.spacer{flex:1}
+.iconbtn{width:40px;height:40px;border-radius:50%;border:none;background:var(--card);box-shadow:var(--shadow);display:grid;place-items:center}
+.iconbtn svg{width:19px;height:19px;stroke:var(--fg);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+header .iconbtn{box-shadow:none;border:1px solid var(--line)}
+#map{flex:1;min-height:0;background:var(--bg)}
+.mapwrap{flex:1;min-height:0;position:relative;display:flex}
+.ctl{position:absolute;right:max(12px,env(safe-area-inset-right));top:12px;display:flex;flex-direction:column;gap:8px;z-index:400}
+.banner{position:absolute;left:12px;right:12px;top:12px;z-index:450;background:var(--fg);color:var(--surface);padding:10px 14px;border-radius:14px;font-weight:600;font-size:14px;box-shadow:var(--shadow);display:flex;gap:10px;align-items:center}
+.banner button{margin-left:auto;background:none;border:1px solid currentColor;color:inherit;border-radius:8px;padding:4px 10px;font-weight:600}
+.toast{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);background:var(--fg);color:var(--surface);padding:9px 14px;border-radius:999px;font-weight:600;font-size:13.5px;z-index:450;white-space:nowrap;box-shadow:var(--shadow)}
+.sheet{background:var(--surface);border-top:1px solid var(--line);max-height:40%;overflow:auto;padding:10px max(14px,env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left))}
+.sheet-h{display:flex;align-items:center;gap:8px;margin:2px 4px 6px}
+.sheet-h h2{font-family:var(--display);font-size:16px;margin:0;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.small{font-size:12.5px;color:var(--muted)}
+.linkbtn{background:none;border:none;color:var(--accent);font-weight:700;font-size:13.5px;padding:4px}
+.member{display:grid;grid-template-columns:38px 1fr auto;gap:12px;align-items:center;padding:9px 6px;border-radius:12px;width:100%;border:none;background:none;text-align:left}
+.member:hover{background:var(--accent-soft)}
+.av{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:800}
+.member b{display:block;font-weight:700}
+.dist{text-align:right;font-weight:800;font-variant-numeric:tabular-nums}
+.dist small{display:block;font-weight:500;color:var(--muted)}
+.here{color:var(--ok)}
+.row-actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.pillbtn{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:8px 13px;font-weight:600;font-size:13.5px}
+.pillbtn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* Markers */
+.pin{position:relative}
+.pin .c{width:18px;height:18px;border-radius:50%;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);position:absolute;left:-9px;top:-9px}
+.pin .c.stale{opacity:.5}
+.pin .lab{position:absolute;left:12px;top:-40px;background:var(--card);color:var(--fg);padding:5px 9px;border-radius:9px;box-shadow:0 2px 6px rgba(0,0,0,.2);white-space:nowrap;font:700 12.5px var(--body)}
+.pin .lab small{display:block;font-weight:500;color:var(--muted);font-size:11.5px}
+.flag{font-size:0}
+.flag svg{position:absolute;left:-4px;top:-40px}
+.leaflet-container{font-family:var(--body)}
+</style>
+</head>
+<body>
+
+<section class="join" id="joinView">
+  <form class="card" id="joinForm" novalidate>
+    <h1 class="brand">Route<span>Together</span></h1>
+    <p class="lead">See where everyone in your trip is, live, on one map.</p>
+    <label>Your name<input id="name" maxlength="24" autocomplete="nickname" placeholder="e.g. Ritesh" required></label>
+    <label>Trip code
+      <div class="coderow"><input id="code" maxlength="16" placeholder="GOA-482" autocomplete="off" required><button type="button" class="ghost" id="newCode">New trip</button></div>
+    </label>
+    <p class="err" id="joinErr" hidden></p>
+    <button class="primary" type="submit" id="joinBtn">Join trip</button>
+    <p class="fine">Your location is shared only with people who have this trip code. Keep this page open while travelling; phones pause sharing when the screen is locked or the browser is closed.</p>
+  </form>
+</section>
+
+<section class="app" id="appView" hidden>
+  <header>
+    <h1>RouteTogether</h1>
+    <span class="spacer"></span>
+    <button class="chip" id="shareBtn" aria-label="Invite friends"><span class="dot" id="connDot"></span><span id="codeLbl"></span></button>
+    <button class="iconbtn" id="leaveBtn" aria-label="Leave trip"><svg viewBox="0 0 24 24"><path d="M15 4h4a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-4M10 17l-5-5 5-5M5 12h11"/></svg></button>
+  </header>
+  <div class="mapwrap">
+    <div id="map"></div>
+    <div class="ctl">
+      <button class="iconbtn" id="fitBtn" aria-label="Show everyone"><svg viewBox="0 0 24 24"><path d="M4 9V5a1 1 0 0 1 1-1h4M15 4h4a1 1 0 0 1 1 1v4M20 15v4a1 1 0 0 1-1 1h-4M9 20H5a1 1 0 0 1-1-1v-4"/></svg></button>
+      <button class="iconbtn" id="meBtn" aria-label="Go to my location"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
+    </div>
+    <div class="banner" id="banner" hidden><span id="bannerTxt"></span><button id="bannerBtn" hidden>Cancel</button></div>
+    <div class="toast" id="toast" hidden></div>
+  </div>
+  <div class="sheet">
+    <div class="sheet-h"><h2 id="destTitle">No meeting point yet</h2><button class="linkbtn" id="destBtn">Set meeting point</button></div>
+    <div id="list"></div>
+    <div class="row-actions">
+      <button class="pillbtn on" id="shareToggle" aria-pressed="true">Sharing my location</button>
+      <button class="pillbtn" id="inviteBtn">Invite friends</button>
+    </div>
+  </div>
+</section>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const store = { get(k){try{return localStorage.getItem(k)}catch{return null}}, set(k,v){try{localStorage.setItem(k,v)}catch{}}, del(k){try{localStorage.removeItem(k)}catch{}} };
+
+// ---------- identity ----------
+let memberId = store.get("rt_id");
+if (!memberId) { memberId = "m" + Math.random().toString(36).slice(2, 12); store.set("rt_id", memberId); }
+const urlCode = new URLSearchParams(location.search).get("trip");
+$("name").value = store.get("rt_name") || "";
+$("code").value = (urlCode || store.get("rt_code") || "").toUpperCase();
+$("newCode").onclick = () => {
+  const words = ["GOA","TRIP","ROAD","BEACH","HILL","RIDE","TREK","CITY"];
+  $("code").value = words[Math.floor(Math.random()*words.length)] + "-" + Math.floor(100 + Math.random()*900);
+};
+
+// ---------- state ----------
+const socket = io({ autoConnect: false });
+let trip = null, members = new Map(), dest = null, map, markers = new Map(), lines = new Map(), destMarker = null;
+let watchId = null, sharing = true, pickingDest = false, fittedOnce = false, arrived = new Set(), wakeLock = null;
+
+// ---------- helpers ----------
+function haversine(a, b) {
+  const R = 6371000, toR = (x) => x * Math.PI / 180;
+  const dLat = toR(b.lat - a.lat), dLng = toR(b.lng - a.lng);
+  const h = Math.sin(dLat/2)**2 + Math.cos(toR(a.lat))*Math.cos(toR(b.lat))*Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+const fmtDist = (m) => m < 1000 ? Math.round(m / 10) * 10 + " m" : (m / 1000).toFixed(m < 10000 ? 1 : 0) + " km";
+function ago(t) {
+  if (!t) return "no location yet";
+  const s = Math.round((Date.now() - t) / 1000);
+  if (s < 20) return "just now"; if (s < 60) return s + " s ago";
+  const m = Math.round(s / 60); return m < 60 ? m + " min ago" : Math.round(m / 60) + " h ago";
+}
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => t.hidden = true, 3000); }
+function banner(msg, cancellable) { $("bannerTxt").textContent = msg; $("bannerBtn").hidden = !cancellable; $("banner").hidden = !msg; }
+const inviteLink = () => location.origin + "/?trip=" + encodeURIComponent(trip);
+
+// ---------- join ----------
+$("joinForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const name = $("name").value.trim(), code = $("code").value.trim().toUpperCase();
+  if (!name) return showErr("Enter your name so friends know which pin is you.");
+  if (!/^[A-Z0-9-]{3,16}$/.test(code)) return showErr("Trip codes use 3–16 letters, numbers or dashes. Tap New trip to make one.");
+  store.set("rt_name", name); store.set("rt_code", code);
+  $("joinBtn").disabled = true; $("joinBtn").textContent = "Joining…";
+  socket.connect();
+  socket.emit("join", { code, name, memberId }, (res) => {
+    $("joinBtn").disabled = false; $("joinBtn").textContent = "Join trip";
+    if (res?.error) return showErr(res.error);
+    trip = res.code; openApp(); applyState(res);
+  });
+});
+function showErr(m) { $("joinErr").textContent = m; $("joinErr").hidden = false; }
+
+socket.on("connect", () => { $("connDot").classList.remove("off");
+  if (trip) socket.emit("join", { code: trip, name: store.get("rt_name"), memberId }, (res) => res?.ok && applyState(res)); });
+socket.on("disconnect", () => $("connDot").classList.add("off"));
+socket.on("state", applyState);
+socket.on("member", (m) => { members.set(m.id, m); renderAll(); });
+
+function applyState(s) {
+  members = new Map(s.members.map((m) => [m.id, m]));
+  dest = s.dest; renderAll();
+}
+
+// ---------- app ----------
+function openApp() {
+  $("joinView").hidden = true; $("appView").hidden = false;
+  $("codeLbl").textContent = trip;
+  history.replaceState(null, "", "/?trip=" + encodeURIComponent(trip));
+  if (!map) {
+    map = L.map("map", { zoomControl: false }).setView([20.5937, 78.9629], 5);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(map);
+    map.on("click", (e) => { if (!pickingDest) return; pickingDest = false; banner("");
+      socket.emit("dest", { lat: e.latlng.lat, lng: e.latlng.lng, name: "Meeting point" }); toast("Meeting point set for everyone"); });
+  }
+  setTimeout(() => map.invalidateSize(), 50);
+  startSharing();
+  requestWake();
+}
+
+function startSharing() {
+  if (!("geolocation" in navigator)) return banner("This browser can't share location. Try Chrome or Safari.");
+  if (watchId !== null) return;
+  watchId = navigator.geolocation.watchPosition((p) => {
+    banner("");
+    socket.emit("pos", { lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy });
+  }, (err) => {
+    if (err.code === 1) banner("Location is blocked. Allow location for this site in your browser settings, then reload.");
+    else banner("Looking for GPS signal…");
+  }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+}
+function stopSharing() { if (watchId !== null) navigator.geolocation.clearWatch(watchId); watchId = null; socket.emit("sharing", false); }
+
+$("shareToggle").onclick = () => {
+  sharing = !sharing;
+  $("shareToggle").classList.toggle("on", sharing); $("shareToggle").setAttribute("aria-pressed", sharing);
+  $("shareToggle").textContent = sharing ? "Sharing my location" : "Location paused";
+  sharing ? startSharing() : stopSharing();
+};
+
+async function invite() {
+  const url = inviteLink(), text = `Join my trip on RouteTogether. Code: ${trip}`;
+  if (navigator.share) { try { await navigator.share({ title: "RouteTogether", text, url }); return; } catch {} }
+  try { await navigator.clipboard.writeText(url); toast("Invite link copied"); } catch { prompt("Copy this link", url); }
+}
+$("shareBtn").onclick = invite; $("inviteBtn").onclick = invite;
+
+$("destBtn").onclick = () => {
+  if (dest && !pickingDest) { socket.emit("dest", null); toast("Meeting point removed"); return; }
+  pickingDest = true; banner("Tap the map where everyone should meet", true);
+};
+$("bannerBtn").onclick = () => { pickingDest = false; banner(""); };
+$("fitBtn").onclick = () => fitAll(true);
+$("meBtn").onclick = () => { const me = members.get(memberId); if (me?.lat != null) map.setView([me.lat, me.lng], 16); else toast("Waiting for your GPS"); };
+$("leaveBtn").onclick = () => {
+  stopSharing(); socket.emit("leave"); store.del("rt_code"); trip = null;
+  markers.forEach((m) => m.remove()); markers.clear(); lines.forEach((l) => l.remove()); lines.clear();
+  destMarker?.remove(); destMarker = null; fittedOnce = false;
+  $("appView").hidden = true; $("joinView").hidden = false; $("code").value = ""; history.replaceState(null, "", "/");
+};
+
+async function requestWake() { try { wakeLock = await navigator.wakeLock?.request("screen"); } catch {} }
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && trip) requestWake(); });
+
+// ---------- render ----------
+function distFor(m) {
+  if (m.lat == null) return null;
+  const me = members.get(memberId);
+  if (dest) return haversine(m, dest);
+  if (me?.lat != null && m.id !== memberId) return haversine(m, me);
+  return null;
+}
+
+function renderAll() {
+  if (!map) return;
+  const seen = new Set();
+  for (const m of members.values()) {
+    seen.add(m.id);
+    if (m.lat == null) { markers.get(m.id)?.remove(); markers.delete(m.id); lines.get(m.id)?.remove(); lines.delete(m.id); continue; }
+    const d = distFor(m);
+    const stale = !m.online || Date.now() - (m.updated || 0) > 5 * 60 * 1000;
+    const sub = dest ? (d < 150 ? "Arrived" : fmtDist(d)) : (m.id === memberId ? "You" : d != null ? fmtDist(d) + " away" : ago(m.updated));
+    const html = `<div class="pin"><div class="c${stale ? " stale" : ""}" style="background:${m.color}"></div><div class="lab">${esc(m.name)}${m.id === memberId ? " (you)" : ""}<small>${esc(sub)}</small></div></div>`;
+    const icon = L.divIcon({ className: "", html, iconSize: [0, 0] });
+    if (markers.has(m.id)) markers.get(m.id).setLatLng([m.lat, m.lng]).setIcon(icon);
+    else markers.set(m.id, L.marker([m.lat, m.lng], { icon }).addTo(map));
+    if (dest) {
+      const pts = [[m.lat, m.lng], [dest.lat, dest.lng]];
+      if (lines.has(m.id)) lines.get(m.id).setLatLngs(pts);
+      else lines.set(m.id, L.polyline(pts, { color: m.color, weight: 3, dashArray: "6 8", opacity: .8 }).addTo(map));
+    } else { lines.get(m.id)?.remove(); lines.delete(m.id); }
+    if (dest && d != null && d < 150 && !arrived.has(m.id)) { arrived.add(m.id); toast(`${m.name} reached the meeting point`); }
+    if (dest && d != null && d > 300) arrived.delete(m.id);
+  }
+  for (const id of [...markers.keys()]) if (!seen.has(id)) { markers.get(id).remove(); markers.delete(id); lines.get(id)?.remove(); lines.delete(id); }
+
+  if (dest) {
+    const fl = L.divIcon({ className: "flag", iconSize: [0, 0], html: '<svg width="32" height="44" viewBox="0 0 32 44"><path d="M4 42V4" stroke="#0f2a3d" stroke-width="3"/><path d="M4 4l24 7-24 8z" fill="#e2453c"/><circle cx="4" cy="42" r="3" fill="#1677e5"/></svg>' });
+    if (destMarker) destMarker.setLatLng([dest.lat, dest.lng]); else destMarker = L.marker([dest.lat, dest.lng], { icon: fl }).addTo(map);
+    $("destTitle").textContent = "Heading to " + dest.name; $("destBtn").textContent = "Remove";
+  } else {
+    destMarker?.remove(); destMarker = null; arrived.clear();
+    $("destTitle").textContent = "Your group"; $("destBtn").textContent = "Set meeting point";
+  }
+
+  const list = [...members.values()].sort((a, b) => (distFor(a) ?? 1e12) - (distFor(b) ?? 1e12));
+  $("list").innerHTML = list.map((m) => {
+    const d = distFor(m), here = dest && d != null && d < 150;
+    const status = !m.sharing ? "Location paused" : !m.online ? "Offline · last seen " + ago(m.updated) : "Updated " + ago(m.updated);
+    const right = m.lat == null ? "—" : here ? "Arrived" : d != null ? fmtDist(d) : m.id === memberId ? "You" : "";
+    return `<button class="member" data-id="${esc(m.id)}"><span class="av" style="background:${m.color}">${esc(m.name[0].toUpperCase())}</span>
+      <span><b>${esc(m.name)}${m.id === memberId ? " (you)" : ""}</b><span class="small">${esc(status)}</span></span>
+      <span class="dist ${here ? "here" : ""}">${right}<small>${dest && d != null && !here ? "to meet" : ""}</small></span></button>`;
+  }).join("") || '<p class="small">Waiting for friends to join. Tap Invite friends to send them the link.</p>';
+
+  if (!fittedOnce && markers.size) { fittedOnce = true; fitAll(false); }
+}
+
+function fitAll(animate) {
+  const pts = [...markers.values()].map((m) => m.getLatLng());
+  if (dest) pts.push(L.latLng(dest.lat, dest.lng));
+  if (!pts.length) return toast("No locations yet");
+  if (pts.length === 1) map.setView(pts[0], 15, { animate });
+  else map.fitBounds(L.latLngBounds(pts).pad(0.25), { animate, maxZoom: 16 });
+}
+
+$("list").addEventListener("click", (e) => {
+  const b = e.target.closest(".member"); if (!b) return;
+  const m = members.get(b.dataset.id);
+  if (m?.lat != null) map.setView([m.lat, m.lng], 16); else toast(`${m?.name || "They"} hasn't shared a location yet`);
+});
+setInterval(renderAll, 15000); // keep "updated x min ago" fresh
+
+// auto-rejoin if you were already in a trip on this phone
+if (store.get("rt_name") && (urlCode || store.get("rt_code"))) $("joinForm").requestSubmit();
+</script>
+</body>
+</html>
